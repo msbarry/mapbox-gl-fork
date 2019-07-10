@@ -26,8 +26,9 @@ import SourceCache from '../source/source_cache';
 import GeoJSONSource from '../source/geojson_source';
 import styleSpec from '../style-spec/reference/latest';
 import getWorkerPool from '../util/global_worker_pool';
+import performance from '../util/performance';
 import deref from '../style-spec/deref';
-import diffStyles, {operations as diffOperations} from '../style-spec/diff';
+import diffStyles, {diffLayers, operations as diffOperations} from '../style-spec/diff';
 import {
     registerForPluginAvailability,
     evented as rtlTextPluginEvented
@@ -455,6 +456,48 @@ class Style extends Evented {
         });
 
         this.stylesheet = nextState;
+
+        return true;
+    }
+
+    /**
+     * Update this style's layers to match the given layers, performing only
+     * the necessary mutations.
+     *
+     * May throw an Error ('Unimplemented: METHOD') if the mapbox-gl-style-spec
+     * diff algorithm produces an operation that is not supported.
+     *
+     * @returns {boolean} true if any changes were made; false otherwise
+     * @private
+     */
+    setLayers(nextLayers: Array<LayerSpecification>) {
+        this._checkLoaded();
+
+        nextLayers = clone(nextLayers);
+        nextLayers = deref(nextLayers);
+
+        const changes = diffLayers(this._serializeLayers(this._order), nextLayers)
+            .filter(op => !(op.command in ignoredDiffOperations));
+
+        if (changes.length === 0) {
+            return false;
+        }
+
+        const unimplementedOps = changes.filter(op => !(op.command in supportedDiffOperations));
+        if (unimplementedOps.length > 0) {
+            throw new Error(`Unimplemented: ${unimplementedOps.map(op => op.command).join(', ')}.`);
+        }
+
+        changes.forEach((op) => {
+            if (op.command === 'setTransition') {
+                // `transition` is always read directly off of
+                // `this.stylesheet`, which we update below
+                return;
+            }
+            (this: any)[op.command].apply(this, op.args);
+        });
+
+        this.stylesheet = extend({}, this.stylesheet, { layers: nextLayers });
 
         return true;
     }
@@ -1259,6 +1302,13 @@ class Style extends Evented {
 
     getResource(mapId: string, params: RequestParameters, callback: ResponseCallback<any>): Cancelable {
         return makeRequest(params, callback);
+    }
+
+    onWorkerResourceTimings(mapId: string, {timings, timeOrigin = 0}: any) {
+        this.fire(new Event('otgm.workerresourcetimings', {
+            timings,
+            offset: timeOrigin - (performance.timeOrigin || 0)
+        }));
     }
 }
 

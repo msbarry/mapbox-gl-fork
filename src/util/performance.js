@@ -1,6 +1,9 @@
 // @flow
 
+import {bindAll, extend} from "./util";
+
 import type {RequestParameters} from '../util/ajax';
+import type {WorkerTileCallback, WorkerTileResult} from '../source/worker_source';
 
 // Wraps performance to facilitate testing
 // Not incorporated into browser.js because the latter is poisonous when used outside the main thread
@@ -12,6 +15,13 @@ wrapper.getEntriesByName = (url: string) => {
         return performance.getEntriesByName(url);
     else
         return false;
+};
+
+wrapper.now = () => {
+    if (performanceExists && performance && performance.now)
+        return performance.now();
+    else
+        return new Date().getTime();
 };
 
 wrapper.mark = (name: string) => {
@@ -41,6 +51,9 @@ wrapper.clearMeasures = (name: string) => {
     else
         return false;
 };
+
+const timeOrigin = (performanceExists && (performance: any).timeOrigin) || (new Date().getTime() - wrapper.now());
+wrapper.timeOrigin = timeOrigin;
 
 /**
  * Safe wrapper for the performance resource timing API in web workers with graceful degradation
@@ -80,6 +93,37 @@ class Performance {
     }
 }
 
+class Timeline {
+    _marks: {[string]: number[]};
+
+    constructor () {
+        this._marks = {};
+        bindAll(['mark', 'wrapCallback', 'finish'], this);
+        this.mark();
+    }
+
+    mark(id: ?string): void {
+        const _id = id || '';
+        this._marks[_id] = this._marks[_id] || [];
+        this._marks[_id].push(wrapper.now());
+    }
+
+    finish(): {[string]: any} {
+        this.mark();
+        return extend({}, this._marks, {timeOrigin});
+    }
+
+    wrapCallback(callback: WorkerTileCallback): WorkerTileCallback {
+        return (error: ?Error, result: ?WorkerTileResult) => {
+            const perfTiming = this.finish();
+            const modifiedResult = result ? extend({}, result, {perfTiming}) : result;
+            return callback(error, modifiedResult);
+        };
+    }
+}
+
 wrapper.Performance = Performance;
+wrapper.Timeline = Timeline;
+wrapper.supported = performanceExists;
 
 export default wrapper;

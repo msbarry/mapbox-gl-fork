@@ -1023,6 +1023,13 @@ class Map extends Camera {
         }
     }
 
+    setLayers(layers: Array<LayerSpecification>) {
+        if (this.style.setLayers(layers)) {
+            this._update(true);
+        }
+        return this;
+    }
+
     /**
      * Returns the map's Mapbox style object, which can be used to recreate the map's style.
      *
@@ -1095,6 +1102,22 @@ class Map extends Camera {
             }
         }
         return true;
+    }
+
+    getLoadedRatio(sourceId: ?string) {
+        let total = 0, loaded = 0;
+        const sources = this.style && this.style.sourceCaches;
+        for (const id in sources) {
+            if (sourceId && id !== sourceId) continue;
+            const source = sources[id];
+            const tiles = source._tiles;
+            for (const t in tiles) {
+                const tile = tiles[t];
+                total++;
+                if (tile.state === 'loaded' || tile.state === 'errored') loaded++;
+            }
+        }
+        return loaded / (total || 1);
     }
 
     /**

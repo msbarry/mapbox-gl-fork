@@ -1,6 +1,6 @@
 /rollup/build/
 /docs/components/api.json
-/dist/
+#/dist/
 /docs/pages/dist/
 /docs/img/dist/
 *.js.map
@@ -25,3 +25,4 @@ _site
 yarn-error.log
 yarn-debug.log
 npm-debug.log
+TODO
