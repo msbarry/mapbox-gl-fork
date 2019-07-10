@@ -36,7 +36,7 @@ export type LoadVectorTileResult = {
 export type LoadVectorDataCallback = Callback<?LoadVectorTileResult>;
 
 export type AbortVectorData = () => void;
-export type LoadVectorData = (params: WorkerTileParameters, callback: LoadVectorDataCallback) => ?AbortVectorData;
+export type LoadVectorData = (params: WorkerTileParameters, callback: LoadVectorDataCallback, perfMark: (string) => void) => ?AbortVectorData;
 
 /**
  * @private
@@ -97,7 +97,7 @@ class VectorTileWorkerSource implements WorkerSource {
      * {@link VectorTileWorkerSource#loadVectorData} (which by default expects
      * a `params.url` property) for fetching and producing a VectorTile object.
      */
-    loadTile(params: WorkerTileParameters, callback: WorkerTileCallback) {
+    loadTile(params: WorkerTileParameters, callback: WorkerTileCallback, perfMark: (?string) => void = (_: ?string) => {}) {
         const uid = params.uid;
 
         if (!this.loading)
@@ -108,6 +108,7 @@ class VectorTileWorkerSource implements WorkerSource {
 
         const workerTile = this.loading[uid] = new WorkerTile(params);
         workerTile.abort = this.loadVectorData(params, (err, response) => {
+            perfMark();
             delete this.loading[uid];
 
             if (err || !response) {
@@ -136,17 +137,17 @@ class VectorTileWorkerSource implements WorkerSource {
 
                 // Transferring a copy of rawTileData because the worker needs to retain its copy.
                 callback(null, extend({rawTileData: rawTileData.slice(0)}, result, cacheControl, resourceTiming));
-            });
+            }, perfMark);
 
             this.loaded = this.loaded || {};
             this.loaded[uid] = workerTile;
-        });
+        }, perfMark);
     }
 
     /**
      * Implements {@link WorkerSource#reloadTile}.
      */
-    reloadTile(params: WorkerTileParameters, callback: WorkerTileCallback) {
+    reloadTile(params: WorkerTileParameters, callback: WorkerTileCallback, perfMark: (?string) => void = (_: ?string) => {}) {
         const loaded = this.loaded,
             uid = params.uid,
             vtSource = this;
@@ -158,7 +159,7 @@ class VectorTileWorkerSource implements WorkerSource {
                 const reloadCallback = workerTile.reloadCallback;
                 if (reloadCallback) {
                     delete workerTile.reloadCallback;
-                    workerTile.parse(workerTile.vectorTile, vtSource.layerIndex, this.availableImages, vtSource.actor, reloadCallback);
+                    workerTile.parse(workerTile.vectorTile, vtSource.layerIndex, this.availableImages, vtSource.actor, reloadCallback, perfMark);
                 }
                 callback(err, data);
             };
@@ -168,7 +169,7 @@ class VectorTileWorkerSource implements WorkerSource {
             } else if (workerTile.status === 'done') {
                 // if there was no vector tile data on the initial load, don't try and re-parse tile
                 if (workerTile.vectorTile) {
-                    workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, done);
+                    workerTile.parse(workerTile.vectorTile, this.layerIndex, this.availableImages, this.actor, done, perfMark);
                 } else {
                     done();
                 }
