@@ -1,4 +1,4 @@
-/* Mapbox GL JS is licensed under the 3-Clause BSD License. Full text of license: https://github.com/mapbox/mapbox-gl-js/blob/v1.1.0/LICENSE.txt */
+/* Mapbox GL JS is licensed under the 3-Clause BSD License. Full text of license: https://github.com/mapbox/mapbox-gl-js/blob/v1.1.1/LICENSE.txt */
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
 typeof define === 'function' && define.amd ? define(factory) :
@@ -32,7 +32,7 @@ function createCommonjsModule(fn, module) {
 	return module = { exports: {} }, fn(module, module.exports), module.exports;
 }
 
-var version = "1.1.0";
+var version = "1.1.1";
 
 var unitbezier = UnitBezier;
 function UnitBezier(p1x, p1y, p2x, p2y) {
@@ -1043,10 +1043,10 @@ function cacheGet(request, callback) {
     if (!self.caches) {
         return callback(null);
     }
+    var strippedURL = stripQueryParameters(request.url);
     self.caches.open(CACHE_NAME).catch(callback).then(function (cache) {
-        cache.match(request, { ignoreSearch: true }).catch(callback).then(function (response) {
+        cache.match(strippedURL).catch(callback).then(function (response) {
             var fresh = isFresh(response);
-            var strippedURL = stripQueryParameters(request.url);
             cache.delete(strippedURL);
             if (fresh) {
                 cache.put(strippedURL, response.clone());
@@ -1151,11 +1151,15 @@ function makeFetchRequest(requestParameters, callback) {
         signal: controller.signal
     });
     var complete = false;
+    var aborted = false;
     var cacheIgnoringSearch = hasCacheDefeatingSku(request.url);
     if (requestParameters.type === 'json') {
         request.headers.set('Accept', 'application/json');
     }
     var validateOrFetch = function (err, cachedResponse, responseIsFresh) {
+        if (aborted) {
+            return;
+        }
         if (err) {
             if (err.message !== 'SecurityError') {
                 warnOnce(err);
@@ -1181,6 +1185,9 @@ function makeFetchRequest(requestParameters, callback) {
     };
     var finishRequest = function (response, cacheableResponse, requestTime) {
         (requestParameters.type === 'arrayBuffer' ? response.arrayBuffer() : requestParameters.type === 'json' ? response.json() : response.text()).then(function (result) {
+            if (aborted) {
+                return;
+            }
             if (cacheableResponse && requestTime) {
                 cachePut(request, cacheableResponse, requestTime);
             }
@@ -1197,6 +1204,7 @@ function makeFetchRequest(requestParameters, callback) {
     }
     return {
         cancel: function () {
+            aborted = true;
             if (!complete) {
                 controller.abort();
             }
@@ -19239,7 +19247,8 @@ Actor.prototype.send = function send(type, data, callback, targetMapId) {
     if (callback) {
         return {
             cancel: function () {
-                return this$1.target.postMessage({
+                this$1.callbacks[id] = null;
+                this$1.target.postMessage({
                     targetMapId: targetMapId,
                     sourceMapId: this$1.mapId,
                     type: '<cancel>',
