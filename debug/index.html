@@ -26,6 +26,22 @@ var map = window.map = new mapboxgl.Map({
     hash: true
 });
 
+map.on('style.load', () => {
+    map.setLayers(map.getStyle().layers);
+});
+map.on('sourcedataloading', e => console.log('loading tile'));
+map.on('sourcedata', e => {
+    if (e.tile) {
+        console.group('loaded tile');
+        console.log(100 * map.getLoadedRatio('composite') + '% loaded');
+        console.log('perf timings', e.tile.perfTiming);
+        console.groupEnd();
+    }
+});
+map.on('otgm.workerresourcetimings', ({timings, offset}) => {
+    console.log('timings:', timings.map(d => ({...d, offset})));
+});
+
 </script>
 </body>
 </html>

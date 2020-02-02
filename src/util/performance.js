@@ -1,7 +1,10 @@
 // @flow
 
 import window from '../util/window';
+import {bindAll, extend} from "./util";
+
 import type {RequestParameters} from '../util/ajax';
+import type {WorkerTileCallback, WorkerTileResult} from '../source/worker_source';
 
 const performance = window.performance;
 
@@ -106,6 +109,39 @@ export class RequestPerformance {
         }
 
         return resourceTimingData;
+    }
+}
+
+export const timeOrigin = performance ? (performance.timeOrigin || (new Date().getTime() - performance.now())) : new Date().getTime();
+
+export class Timeline {
+    _marks: {[string]: number[]};
+
+    constructor () {
+        this._marks = {};
+        bindAll(['mark', 'wrapCallback', 'finish'], this);
+        this.mark();
+    }
+
+    mark(id: ?string): void {
+        if (performance) {
+            const _id = id || '';
+            this._marks[_id] = this._marks[_id] || [];
+            this._marks[_id].push(performance.now());
+        }
+    }
+
+    finish(): {[string]: any} {
+        this.mark();
+        return extend({}, this._marks, {timeOrigin});
+    }
+
+    wrapCallback(callback: WorkerTileCallback): WorkerTileCallback {
+        return (error: ?Error, result: ?WorkerTileResult) => {
+            const perfTiming = this.finish();
+            const modifiedResult = result ? extend({}, result, {perfTiming}) : result;
+            return callback(error, modifiedResult);
+        };
     }
 }
 
