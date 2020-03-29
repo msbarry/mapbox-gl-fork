@@ -31296,7 +31296,7 @@ var CollisionGroups = function CollisionGroups(crossSourceCollisions) {
     this.collisionGroups = {};
 };
 CollisionGroups.prototype.get = function get(sourceID) {
-    if (!this.crossSourceCollisions) {
+    if (this.crossSourceCollisions === false || typeof this.crossSourceCollisions === 'object' && this.crossSourceCollisions[sourceID] === false) {
         if (!this.collisionGroups[sourceID]) {
             var nextGroupID = ++this.maxGroupID;
             this.collisionGroups[sourceID] = {
