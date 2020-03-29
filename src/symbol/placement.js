@@ -100,7 +100,7 @@ class CollisionGroups {
         // The predicate/groupID mechanism allows for arbitrary grouping,
         // but the current interface defines one source == one group when
         // crossSourceCollisions == true.
-        if (!this.crossSourceCollisions) {
+        if (this.crossSourceCollisions === false || (typeof this.crossSourceCollisions === 'object' && this.crossSourceCollisions[sourceID] === false)) {
             if (!this.collisionGroups[sourceID]) {
                 const nextGroupID = ++this.maxGroupID;
                 this.collisionGroups[sourceID] = {
