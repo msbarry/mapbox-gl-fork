@@ -31296,13 +31296,25 @@ var CollisionGroups = function CollisionGroups(crossSourceCollisions) {
     this.collisionGroups = {};
 };
 CollisionGroups.prototype.get = function get(sourceID) {
-    if (this.crossSourceCollisions === false || typeof this.crossSourceCollisions === 'object' && this.crossSourceCollisions[sourceID] === false) {
-        if (!this.collisionGroups[sourceID]) {
+    if (typeof this.crossSourceCollisions === 'object') {
+        var group = this.crossSourceCollisions[sourceID] || '';
+        if (!this.collisionGroups[group]) {
             var nextGroupID = ++this.maxGroupID;
-            this.collisionGroups[sourceID] = {
+            this.collisionGroups[group] = {
                 ID: nextGroupID,
                 predicate: function (key) {
                     return key.collisionGroupID === nextGroupID;
+                }
+            };
+        }
+        return this.collisionGroups[group];
+    } else if (!this.crossSourceCollisions === false) {
+        if (!this.collisionGroups[sourceID]) {
+            var nextGroupID$1 = ++this.maxGroupID;
+            this.collisionGroups[sourceID] = {
+                ID: nextGroupID$1,
+                predicate: function (key) {
+                    return key.collisionGroupID === nextGroupID$1;
                 }
             };
         }
