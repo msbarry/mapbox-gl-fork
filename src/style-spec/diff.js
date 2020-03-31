@@ -189,7 +189,7 @@ function indexById(group, layer) {
     return group;
 }
 
-function diffLayers(before, after, commands) {
+function diffLayers(before, after, commands = []) {
     before = before || [];
     after = after || [];
 
@@ -296,6 +296,7 @@ function diffLayers(before, after, commands) {
             }
         }
     }
+    return commands;
 }
 
 /**
@@ -390,4 +391,4 @@ function diffStyles(before, after) {
 }
 
 export default diffStyles;
-export {operations};
+export {operations, diffLayers};
