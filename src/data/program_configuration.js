@@ -406,6 +406,7 @@ export default class ProgramConfiguration {
     binders: {[_: string]: (AttributeBinder | UniformBinder) };
     cacheKey: string;
     layoutAttributes: Array<StructArrayMember>;
+    id: string;
 
     _buffers: Array<VertexBuffer>;
 
@@ -413,6 +414,7 @@ export default class ProgramConfiguration {
         this.binders = {};
         this.layoutAttributes = layoutAttributes;
         this._buffers = [];
+        this.id = layer.id;
 
         const keys = [];
 
@@ -531,6 +533,9 @@ export default class ProgramConfiguration {
         // Uniform state bindings are owned by the Program, but we set them
         // from within the ProgramConfiguraton's binder members.
         for (const {name, property, binding} of binderUniforms) {
+            if (typeof (this.binders[property]: any).setUniform !== 'function') {
+                throw new Error(`setUniform not defined on [${name}] [${property}], available: [${Object.keys(this.binders).join(',')}], layerid: [${this.id}]`);
+            }
             (this.binders[property]: any).setUniform(binding, globals, properties.get(property), name);
         }
     }
