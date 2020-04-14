@@ -1,5 +1,5 @@
 /rollup/build/
-/dist/
+# /dist/
 *.es.js
 *.js.map
 node_modules
@@ -27,3 +27,4 @@ yarn-error.log
 yarn-debug.log
 npm-debug.log
 .idea
+TODO
