@@ -17801,11 +17801,11 @@ var placement = createLayout([
         name: 'anchorY'
     },
     {
-        type: 'Uint16',
+        type: 'Uint32',
         name: 'glyphStartIndex'
     },
     {
-        type: 'Uint16',
+        type: 'Uint32',
         name: 'numGlyphs'
     },
     {
