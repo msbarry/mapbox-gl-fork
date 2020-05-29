@@ -23950,16 +23950,34 @@ WorkerTile.prototype.parse = function parse(data, layerIndex, availableImages, a
             perfMark();
             var glyphAtlas = new GlyphAtlas(glyphMap);
             var imageAtlas = new ref_properties$1.ImageAtlas(iconMap, patternMap);
+            var total = 0;
+            var lines = [];
             for (var key in buckets) {
                 var bucket = buckets[key];
                 if (bucket instanceof ref_properties$1.SymbolBucket) {
                     recalculateLayers(bucket.layers, this.zoom, availableImages);
                     ref_properties$1.performSymbolLayout(bucket, glyphMap, glyphAtlas.positions, iconMap, imageAtlas.iconPositions, this.showCollisionBoxes, this.tileID.canonical);
+                    total += bucket.glyphOffsetArray.length;
+                    if (bucket.glyphOffsetArray.length > 0) {
+                        lines.push([
+                            bucket.layerIds.join(', '),
+                            bucket.glyphOffsetArray.length
+                        ]);
+                    }
                 } else if (bucket.hasPattern && (bucket instanceof ref_properties$1.LineBucket || bucket instanceof ref_properties$1.FillBucket || bucket instanceof ref_properties$1.FillExtrusionBucket)) {
                     recalculateLayers(bucket.layers, this.zoom, availableImages);
                     bucket.addFeatures(options, this.tileID.canonical, imageAtlas.patternPositions);
                 }
             }
+            console.groupCollapsed(this.tileID.overscaledZ + ': ' + this.tileID.canonical.toString() + ' ' + total.toLocaleString());
+            lines.sort(function (ref, ref$1) {
+                var a = ref[1];
+                var b = ref$1[1];
+                return b - a;
+            }).forEach(function (line) {
+                return console.log(line[1].toLocaleString(), line[0]);
+            });
+            console.groupEnd();
             this.status = 'done';
             callback(null, {
                 buckets: ref_properties$1.values(buckets).filter(function (b) {

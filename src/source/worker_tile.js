@@ -185,11 +185,17 @@ class WorkerTile {
                 const glyphAtlas = new GlyphAtlas(glyphMap);
                 const imageAtlas = new ImageAtlas(iconMap, patternMap);
 
+                let total = 0;
+                const lines: Array<[string, number]> = [];
                 for (const key in buckets) {
                     const bucket = buckets[key];
                     if (bucket instanceof SymbolBucket) {
                         recalculateLayers(bucket.layers, this.zoom, availableImages);
                         performSymbolLayout(bucket, glyphMap, glyphAtlas.positions, iconMap, imageAtlas.iconPositions, this.showCollisionBoxes, this.tileID.canonical);
+                        total += bucket.glyphOffsetArray.length;
+                        if (bucket.glyphOffsetArray.length > 0) {
+                            lines.push([bucket.layerIds.join(', '), bucket.glyphOffsetArray.length]);
+                        }
                     } else if (bucket.hasPattern &&
                         (bucket instanceof LineBucket ||
                          bucket instanceof FillBucket ||
@@ -198,6 +204,9 @@ class WorkerTile {
                         bucket.addFeatures(options, this.tileID.canonical, imageAtlas.patternPositions);
                     }
                 }
+                console.groupCollapsed(`${this.tileID.overscaledZ}: ${this.tileID.canonical.toString()} ${total.toLocaleString()}`);
+                lines.sort(([, a], [, b]) => b - a).forEach(line => console.log(line[1].toLocaleString(), line[0]));
+                console.groupEnd();
 
                 this.status = 'done';
                 callback(null, {
