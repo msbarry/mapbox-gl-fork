@@ -37877,7 +37877,7 @@ function getCentroid(points) {
     }
     return sum.div(points.length);
 }
-var MAX_TAP_INTERVAL = 500;
+var MAX_TAP_INTERVAL = 300;
 var MAX_TOUCH_TIME = 500;
 var MAX_DIST = 30;
 var SingleTapRecognizer = function SingleTapRecognizer(options) {
