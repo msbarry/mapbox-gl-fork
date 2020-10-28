@@ -82,6 +82,7 @@ class Tile {
     refreshedUponExpiration: boolean;
     reloadCallback: any;
     resourceTiming: ?Array<PerformanceResourceTiming>;
+    perfTiming: ?{[string]: any};
     queryPadding: number;
 
     symbolFadeHoldUntil: ?number;

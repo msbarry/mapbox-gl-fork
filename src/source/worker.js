@@ -6,6 +6,7 @@ import StyleLayerIndex from '../style/style_layer_index';
 import VectorTileWorkerSource from './vector_tile_worker_source';
 import RasterDEMTileWorkerSource from './raster_dem_tile_worker_source';
 import GeoJSONWorkerSource from './geojson_worker_source';
+import {Timeline, timeOrigin} from '../util/performance';
 import assert from 'assert';
 import {plugin as globalRTLTextPlugin} from './rtl_text_plugin';
 import {enforceCacheSizeLimit} from '../util/tile_request_cache';
@@ -69,6 +70,21 @@ export default class Worker {
             globalRTLTextPlugin['processBidirectionalText'] = rtlTextPlugin.processBidirectionalText;
             globalRTLTextPlugin['processStyledBidirectionalText'] = rtlTextPlugin.processStyledBidirectionalText;
         };
+
+        try {
+            const PerformanceObserver = (this.self: any).PerformanceObserver;
+            if (typeof PerformanceObserver === 'function') {
+                const observer = new PerformanceObserver((list: {getEntries: () => PerformanceResourceTiming[]}) => {
+                    this.actor.send('onWorkerResourceTimings', {
+                        timings: JSON.parse(JSON.stringify(list.getEntries())),
+                        timeOrigin
+                    });
+                });
+                observer.observe({entryTypes: ["resource"]});
+            }
+        } catch (e) {
+            // dont care
+        }
     }
 
     setReferrer(mapID: string, referrer: string) {
@@ -98,7 +114,8 @@ export default class Worker {
 
     loadTile(mapId: string, params: WorkerTileParameters & {type: string}, callback: WorkerTileCallback) {
         assert(params.type);
-        this.getWorkerSource(mapId, params.type, params.source).loadTile(params, callback);
+        const timeline = new Timeline();
+        this.getWorkerSource(mapId, params.type, params.source).loadTile(params, timeline.wrapCallback(callback), timeline.mark);
     }
 
     loadDEMTile(mapId: string, params: WorkerDEMTileParameters, callback: WorkerDEMTileCallback) {
@@ -107,7 +124,8 @@ export default class Worker {
 
     reloadTile(mapId: string, params: WorkerTileParameters & {type: string}, callback: WorkerTileCallback) {
         assert(params.type);
-        this.getWorkerSource(mapId, params.type, params.source).reloadTile(params, callback);
+        const timeline = new Timeline();
+        this.getWorkerSource(mapId, params.type, params.source).reloadTile(params, timeline.wrapCallback(callback), timeline.mark);
     }
 
     abortTile(mapId: string, params: TileParameters & {type: string}, callback: WorkerTileCallback) {

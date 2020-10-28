@@ -9,6 +9,7 @@ import TileBounds from './tile_bounds';
 import {ResourceType} from '../util/ajax';
 import browser from '../util/browser';
 import {cacheEntryPossiblyAdded} from '../util/tile_request_cache';
+import performance, {Timeline} from '../util/performance';
 
 import type {Source} from './source';
 import type {OverscaledTileID} from './tile_id';
@@ -182,6 +183,8 @@ class VectorTileSource extends Evented implements Source {
     }
 
     loadTile(tile: Tile, callback: Callback<void>) {
+        const start = performance && performance.now();
+        const timeline = new Timeline();
         const url = this.map._requestManager.normalizeTileURL(tile.tileID.canonical.url(this.tiles, this.scheme));
         const params = {
             request: this.map._requestManager.transformRequest(url, ResourceType.Tile),
@@ -196,15 +199,18 @@ class VectorTileSource extends Evented implements Source {
             promoteId: this.promoteId
         };
         params.request.collectResourceTiming = this._collectResourceTiming;
+        let op = '-';
 
         if (!tile.actor || tile.state === 'expired') {
             tile.actor = this.dispatcher.getActor();
             tile.request = tile.actor.send('loadTile', params, done.bind(this));
+            op = 'load';
         } else if (tile.state === 'loading') {
             // schedule tile reloading after it has been loaded
             tile.reloadCallback = callback;
         } else {
             tile.request = tile.actor.send('reloadTile', params, done.bind(this));
+            op = 'reload';
         }
 
         function done(err, data) {
@@ -224,6 +230,24 @@ class VectorTileSource extends Evented implements Source {
             tile.loadVectorData(data, this.map.painter);
 
             cacheEntryPossiblyAdded(this.dispatcher);
+
+            tile.perfTiming = {start, op};
+            if (data && data.perfTiming && performance) {
+                const worker: {[string]: any} = data.perfTiming;
+                const main: {[string]: any} = timeline.finish();
+                Object.keys(main).forEach(m => {
+                    if (Array.isArray(main[m])) {
+                        (tile.perfTiming || {})[`m${m}`] = main[m].map(d => d - start);
+                    }
+                });
+                const workerOffset = worker.timeOrigin - main.timeOrigin;
+                (tile.perfTiming || {}).workerOffset = workerOffset;
+                Object.keys(worker).forEach(m => {
+                    if (Array.isArray(worker[m])) {
+                        (tile.perfTiming || {})[`w${m}`] = worker[m].map(d => d + workerOffset - start);
+                    }
+                });
+            }
 
             callback(null);
 
