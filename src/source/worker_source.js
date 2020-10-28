@@ -50,7 +50,8 @@ export type WorkerTileResult = {
     // Only used for benchmarking:
     glyphMap?: {[_: string]: {[_: number]: ?StyleGlyph}} | null,
     iconMap?: {[_: string]: StyleImage} | null,
-    glyphPositions?: GlyphPositions | null
+    glyphPositions?: GlyphPositions | null,
+    perfTimeline?: {[string]: number[]}
 };
 
 export type WorkerTileCallback = (error: ?Error, result: ?WorkerTileResult) => void;
@@ -80,13 +81,13 @@ export interface WorkerSource {
      * back to the main thread for rendering.  Should call the callback with:
      * `{ buckets, featureIndex, collisionIndex, rawTileData}`.
      */
-    loadTile(params: WorkerTileParameters, callback: WorkerTileCallback): void;
+    loadTile(params: WorkerTileParameters, callback: WorkerTileCallback, perfMark: (?string) => void): void;
 
     /**
      * Re-parses a tile that has already been loaded.  Yields the same data as
      * {@link WorkerSource#loadTile}.
      */
-    reloadTile(params: WorkerTileParameters, callback: WorkerTileCallback): void;
+    reloadTile(params: WorkerTileParameters, callback: WorkerTileCallback, perfMark: (?string) => void): void;
 
     /**
      * Aborts loading a tile that is in progress.
